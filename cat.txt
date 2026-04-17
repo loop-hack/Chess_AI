@@ -1,0 +1,297 @@
+import torch
+import numpy as np
+import random
+import matplotlib.pyplot as plt
+%matplotlib inline
+from matplotlib.colors import ListedColormap
+
+
+Board = torch.ones((8, 8))
+# Board[1:2] = 2
+# print(Board)
+color_black = 3
+color_white = 0
+Board[6:7] = color_white
+Board[1:2] = color_black
+
+white_pawn = {"p1":(6,0),"p2":(6,1),"p3":(6,2),"p4":(6,3),"p5":(6,4),"p6":(6,5),"p7":(6,6),"p8":(6,7)}
+black_pawn = {"p1":(1,0),"p2":(1,1),"p3":(1,2),"p4":(1,3),"p5":(1,4),"p6":(1,5),"p7":(1,6),"p8":(1,7)}
+
+# prev_value_black = {}
+# prev_value_white = {}
+
+def get_white_pawn():
+    random_piece = random.choice(list(white_pawn.values()))
+    l_white = random_piece
+    print(l_white)
+    return l_white
+l_white = get_white_pawn()
+
+def get_black_pawn():
+    random_piece = random.choice(list(black_pawn.values()))
+    l_black = random_piece
+    return l_black
+l_black = get_black_pawn()
+
+# print(l)
+
+tup1 = (1, 0)
+tup2 = (2, 0)
+
+def kill_check(l,opp_color,sign):
+    left_exist = False
+    right_exist = False
+
+    t = l[0] + sign in range(8)
+    u = l[1] + sign in range(8)
+
+    if t and u:
+        if Board[l[0] + sign, l[1] + sign] == opp_color:
+                left_exist = True
+
+
+    t = l[0] + sign in range(8)
+    u = l[1] - sign in range(8)
+
+    if t and u:
+        if Board[l[0] + sign, l[1] - sign] == opp_color:
+                right_exist = True
+    print("kill_check")
+    return left_exist , right_exist
+
+def kill(l,sign,opp_color,dict):
+
+
+    left_exist, right_exist = kill_check(l,opp_color,sign)
+
+    if (left_exist and right_exist) == True:
+        n = torch.randint(0,2,(1,))
+        if n.item() == 0:
+            t = (l[0] + sign, l[1] + sign)
+            pawn_to_be_deleted = get_keys_from_value(dict, t)
+            if pawn_to_be_deleted:
+                del dict[pawn_to_be_deleted[0]]
+        else:
+            t = (l[0] - sign, l[1] - sign)
+            pawn_to_be_deleted = get_keys_from_value(dict, t)
+            if pawn_to_be_deleted:
+                del dict[pawn_to_be_deleted[0]]
+
+    elif left_exist == True:
+            t = (l[0] + sign, l[1] + sign)
+            pawn_to_be_deleted = get_keys_from_value(dict, t)
+            if pawn_to_be_deleted:
+                del dict[pawn_to_be_deleted[0]]
+
+    elif right_exist == True:
+            t = (l[0] + sign, l[1] - sign)
+            pawn_to_be_deleted = get_keys_from_value(dict, t)
+            if pawn_to_be_deleted:
+                del dict[pawn_to_be_deleted[0]]
+    print("KIll")
+    return t  #here t returns coordinate of place where pawn will get after killing
+
+
+# Bug
+
+def front_check(l,sign):
+    t= tuple(l[i] + (sign * tup1[i]) for i in range(len(l)))
+    print("front_check")
+    return (Board[t] == 1).item()
+    
+
+def first_move_white(l_white):
+    m = torch.randint(0, 2, (1,))
+    print(m)
+    if m.item() == 0:
+        print("firstmovewhite")
+        t_white = tuple(l_white[i] - tup1[i] for i in range(len(l_white)))
+        Board[t_white] = 0
+        Board[l_white] = 1
+        return t_white
+    elif m.item() == 1:
+        print("firstmovewhite")
+        t_white = tuple(l_white[i] - tup2[i] for i in range(len(l_white)))
+        Board[t_white] = color_white
+        Board[l_white] = 1
+        return t_white
+    
+
+def next_move_white(l_white):
+    left_exist, right_exist = kill_check(l_white,color_black,-1)
+    print(left_exist)
+    kill_possible = left_exist or right_exist
+    front_exist = front_check(l_white,-1)  # here front_exist will be True when there is no pawn ahead of it
+    print(front_exist)
+
+    if (kill_possible and front_exist):
+        m = torch.randint(0, 2, (1,))
+        if m.item() == 0:
+            t_white = kill(l_white,-1,color_black,black_pawn)
+            Board[t_white] = 0
+            Board[l_white] = 1
+            return t_white
+        else:
+            t_white = tuple(l_white[i] - tup1[i] for i in range(len(l_white)))
+            Board[t_white] = 0
+            Board[l_white] = 1
+            return t_white
+
+    elif(kill_possible):
+            t_white = kill(l_white,-1,color_black,black_pawn)
+            Board[t_white] = 0
+            Board[l_white] = 1
+            return t_white
+    
+    elif(front_exist):
+            t_white = tuple(l_white[i] - tup1[i] for i in range(len(l_white)))
+            Board[t_white] = 0
+            Board[l_white] = 1
+            return t_white
+
+def first_move_black(l_black):
+    m = torch.randint(0, 2, (1,))
+    if m.item() == 0:
+        t_black = tuple(l_black[i] + tup1[i] for i in range(len(l_black)))
+        Board[t_black] = 3
+        Board[l_black] = 1
+        return t_black
+
+    else:
+        t_black = tuple(l_black[i] + tup2[i] for i in range(len(l_black)))
+        Board[t_black] = color_black
+        Board[l_black] = 1
+        return t_black
+
+
+
+def next_move_black(l_black):
+    left_exist, right_exist = kill_check(l_black,color_white,1)
+    kill_possible = left_exist or right_exist
+    front_exist = front_check(l_black,1)
+
+
+
+    if (kill_possible and front_exist):
+        m = torch.randint(0, 2, (1,))
+        if m.item() == 0:
+            t_black= kill(l_black,1,color_white,white_pawn)
+            Board[t_black] = 3
+            Board[l_black] = 1
+            return t_black
+
+        else:
+            t_black = tuple(l_black[i] + tup1[i] for i in range(len(l_black)))
+            Board[t_black] = 3
+            Board[l_black] = 1
+            return t_black
+
+
+    elif(kill_possible):
+            t_black = kill(l_black,1,color_white,white_pawn)
+            Board[t_black] = 3
+            Board[l_black] = 1
+            return t_black
+    
+    elif(front_exist):
+            t_black = tuple(l_black[i] + tup1[i] for i in range(len(l_black)))
+            Board[t_black] = 3
+            Board[l_black] = 1
+            return t_black
+
+        
+
+def get_keys_from_value(d, target_value):
+    return [k for k, v in d.items() if v == target_value]
+
+def Board_display():
+
+    board_np = Board.numpy()
+    fig, ax = plt.subplots()
+    ax.imshow(board_np)
+
+    # Grid
+    ax.set_xticks(torch.arange(-0.5, 8, 1), minor=True)
+    ax.set_yticks(torch.arange(-0.5, 8, 1), minor=True)
+    ax.grid(which="minor", color="black", linestyle='-', linewidth=1)
+    ax.tick_params(which="minor", bottom=False, left=False)
+
+    ax.set_yticks(range(8))
+    ax.set_yticklabels([str(i) for i in range(8, 0,-1)])
+
+    ax.set_xticks(range(8))
+    ax.set_xticklabels(list("abcdefgh".upper()))
+
+    plt.show()
+
+
+# Writing code for intiation of moves
+
+
+
+l_white = get_white_pawn()
+
+t_white = first_move_white(l_white)
+
+key_white = get_keys_from_value(white_pawn, l_white)[0]
+white_pawn[key_white] = t_white
+
+
+
+Board_display()
+
+
+for i in range(1,64):
+    
+    if i % 2 == 1:
+
+        while True:
+            l_black = get_black_pawn()
+            left_exist, right_exist = kill_check(l_black, color_white, 1)
+            kill_possible = left_exist or right_exist
+            front_exist = front_check(l_black, 1)
+            if not (kill_possible and front_exist):
+                break
+
+
+        if l_black[0] == 1:
+            t_black = first_move_black(l_black)
+        else:
+            t_black = next_move_black(l_black)
+
+        key_black = get_keys_from_value(black_pawn, l_black)[0]
+        black_pawn[key_black] = t_black
+
+        Board_display()
+
+        print("l_black is at ",l_black)
+        print("t_black is at ",t_black)
+        print(black_pawn)
+
+
+    elif i % 2 == 0:
+        
+        while True:
+            l_white = get_white_pawn()
+            left_exist, right_exist = kill_check(l_white, color_black, -1)
+            kill_possible = left_exist or right_exist
+            front_exist = front_check(l_white, -1)
+            if not (kill_possible and front_exist):
+                break
+
+        if l_white[0] == 6:
+            t_white = first_move_white(l_white)
+        else:
+            t_white = next_move_white(l_white)
+
+        key_white = get_keys_from_value(white_pawn, l_white)[0]
+        white_pawn[key_white] = t_white
+
+        Board_display()
+
+        print("l_white is at ",l_white)
+        print("t_white is at ",t_white)
+
+        print(white_pawn)
+
+
